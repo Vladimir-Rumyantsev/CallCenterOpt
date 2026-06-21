@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 from visualize import plot_sla_landscape, plot_cost_matrix
 from core.config_schema import CallCenterConfig
+from core.optimizer import solve_lp_baseline
 from core.queue_math import calculate_mm_c_metrics
 from core.game_solver import (
     build_cost_matrix,
@@ -179,10 +180,29 @@ def run(cfg: CallCenterConfig, criterion: str = None, show_all: bool = False, pl
 
     # Сравнение результатов всех критериев (если show_all)
     if show_all:
-        print("\n" + "="*50)
-        print("Сводка рекомендаций по критериям:")
+        print("\n" + "=" * 50)
+        print("Сводка рекомендаций по игровым критериям:")
         for crit, res in results.items():
-            print(f"  {crit.capitalize():8}: c = {res['c']:2d}, значение = {res['value']:.2f}")
+            print(f"  {crit.capitalize():8}: c = {res['c']:2d}, значение функции = {res['value']:.2f}")
+
+        # Блок ЛП-валидации
+        print("—" * 50)
+        try:
+            lp_res = solve_lp_baseline(
+                lambda_scenarios=lambdas,
+                mu=mu,
+                salary_per_op=salary,
+                penalty_factor=penalty,
+                sla_threshold=sla,
+                probabilities=probs
+            )
+            print("Математический эталон (ЛП-оптимизация через PuLP):")
+            print(f"  Оптимальное c (под среднюю нагрузку) = {lp_res['c']}")
+            print(f"  Ожидаемый P_wait = {lp_res['p_wait']:.4f} (при пороге SLA <= {sla})")
+            print(f"  Расчетные затраты = {lp_res['cost']:.2f}")
+        except Exception as e:
+            print(f"Не удалось выполнить ЛП-оптимизацию: {e}")
+        print("=" * 50)
 
 
 def main():
