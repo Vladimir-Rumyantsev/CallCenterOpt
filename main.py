@@ -12,8 +12,10 @@ from pathlib import Path
 
 import yaml
 import numpy as np
+from pydantic import ValidationError
 
 from visualize import plot_sla_landscape, plot_cost_matrix
+from core.config_schema import CallCenterConfig
 from core.queue_math import calculate_mm_c_metrics
 from core.game_solver import (
     build_cost_matrix,
@@ -24,30 +26,28 @@ from core.game_solver import (
 )
 
 
-def load_config(path: str) -> dict:
-    """Загрузка и валидация YAML конфигурации."""
+def load_config(path: str) -> CallCenterConfig:
+    """Загрузка YAML конфигурации и валидация через Pydantic."""
     cfg_path = Path(path)
     if not cfg_path.exists():
         raise FileNotFoundError(f"Файл конфигурации не найден: {path}")
 
     with open(cfg_path, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+        raw_data = yaml.safe_load(f)
 
-    required = ["lambda_scenarios", "mu", "salary_per_operator", "penalty_factor"]
-    missing = [k for k in required if k not in cfg]
-    if missing:
-        raise KeyError(f"Отсутствуют обязательные поля: {missing}")
-    if cfg["mu"] <= 0:
-        raise ValueError("mu должно быть > 0")
-    if any(lam < 0 for lam in cfg["lambda_scenarios"]):
-        raise ValueError("Все значения lambda должны быть неотрицательными")
+    # Если файл пустой или не YAML объект
+    if not isinstance(raw_data, dict):
+        raise ValueError("Конфигурационный файл должен содержать YAML-объект (словарь).")
 
-    # Опциональный параметр штрафа за длину очереди
-    cfg.setdefault("penalty_lq", 0.0)
-    if cfg["penalty_lq"] < 0:
-        raise ValueError("penalty_lq не может быть отрицательным")
-
-    return cfg
+    try:
+        # Валидируем данные и возвращаем объект схемы
+        return CallCenterConfig(**raw_data)
+    except ValidationError as e:
+        print(f"\n[Ошибка Валидации Конфигурации] Обнаружены ошибки в {path}:", file=sys.stderr)
+        for error in e.errors():
+            loc = " -> ".join(str(x) for x in error["loc"])
+            print(f"  - {loc}: {error['msg']}", file=sys.stderr)
+        sys.exit(1)
 
 
 def print_cost_table(strategies, lambdas, matrix, best_idx=None, title="Матрица затрат"):
@@ -98,18 +98,18 @@ def print_regret_matrix(matrix, strategies, lambdas):
     print_cost_table(strategies, lambdas, regret, title="Матрица сожалений")
 
 
-def run(cfg: dict, criterion: str = None, show_all: bool = False, plot: bool = False) -> None:
+def run(cfg: CallCenterConfig, criterion: str = None, show_all: bool = False, plot: bool = False) -> None:
     """Основной анализ."""
-    lambdas = cfg["lambda_scenarios"]
-    strategies = cfg.get("strategies", [3, 5, 7, 9, 11])
-    mu = cfg["mu"]
-    salary = cfg["salary_per_operator"]
-    penalty = cfg["penalty_factor"]
-    penalty_lq = cfg["penalty_lq"]
-    alpha = cfg.get("alpha", 0.6)
-    probs = cfg.get("probabilities", [1.0 / len(lambdas)] * len(lambdas))
-    sla = cfg.get("sla_p_wait", 0.15)
-    criterion = criterion or cfg.get("criterion", "hurwicz")
+    lambdas = cfg.lambda_scenarios
+    strategies = cfg.strategies
+    mu = cfg.mu
+    salary = cfg.salary_per_operator
+    penalty = cfg.penalty_factor
+    penalty_lq = cfg.penalty_lq
+    alpha = cfg.alpha
+    probs = cfg.probabilities
+    sla = cfg.sla_p_wait
+    criterion = criterion or cfg.criterion
 
     print("\n" + "=" * 45)
     print("CallCenterOpt - Оптимизатор штата колл-центра")
