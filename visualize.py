@@ -81,7 +81,7 @@ def plot_sla_landscape(
     if save_path:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"График сохранён в {save_path}")
+        print(f"\nГрафик сохранён в {save_path}")
     else:
         plt.show()
 
@@ -122,6 +122,6 @@ def plot_cost_matrix(
     if save_path:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"График сохранён в {save_path}")
+        print(f"\nГрафик сохранён в {save_path}")
     else:
         plt.show()
