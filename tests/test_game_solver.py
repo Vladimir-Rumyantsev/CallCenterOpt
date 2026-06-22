@@ -48,7 +48,7 @@ class TestBuildCostMatrix:
             assert mat[i + 1, 0] > mat[i, 0]
 
     def test_higher_lambda_increases_cost(self, cost_matrix):
-        idx_c5 = STRATEGIES.index(5)
+        idx_c5 = STRATEGIES.index(4)
         assert cost_matrix[idx_c5, 2] >= cost_matrix[idx_c5, 0]
 
     def test_enough_operators_cap_penalty(self):

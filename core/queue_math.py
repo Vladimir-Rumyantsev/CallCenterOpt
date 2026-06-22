@@ -8,11 +8,11 @@ from dataclasses import dataclass
 
 @dataclass
 class QueueMetrics:
-    rho: float
-    p0: float
-    p_wait: float
-    l_q: float
-    w: float
+    rho: float      # для условия устойчивости
+    p0: float       # предельная вероятность
+    p_wait: float   # вероятность ожидания
+    l_q: float      # среднее число заявок в очереди
+    w: float        # среднее время в очереди
     stable: bool
 
 
